@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔥 Click Master Pro</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    color: white;
+    margin: 0;
+
+    background: linear-gradient(-45deg, #ff6ec4, #7873f5, #42e695, #fddb92);
+    background-size: 400% 400%;
+    animation: bg 8s ease infinite;
+}
+
+@keyframes bg {
+    0% {background-position:0%}
+    50% {background-position:100%}
+    100% {background-position:0%}
+}
+
+h1 {
+    font-size: 42px;
+    text-shadow: 0 0 25px #fff, 0 0 40px #ff00ff;
+}
+
+input {
+    padding: 12px;
+    border-radius: 20px;
+    border: none;
+    width: 200px;
+}
+
+button {
+    padding: 14px 28px;
+    border-radius: 20px;
+    border: none;
+    font-size: 20px;
+}
+
+#gameBtn {
+    font-size: 32px;
+    margin-top: 20px;
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
+}
+
+#gameBtn:active {
+    transform: scale(1.4);
+}
+
+.combo {
+    font-size: 24px;
+    color: yellow;
+}
+
+.card {
+    background: rgba(255,255,255,0.9);
+    color: black;
+    margin: 8px auto;
+    padding: 10px;
+    width: 280px;
+    border-radius: 15px;
+}
+
+.first {
+    background: gold !important;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🔥 CLICK MASTER PRO</h1>
+
+<input id="name" placeholder="Your name">
+<br><br>
+<button onclick="startGame()">Start</button>
+
+<h2 id="timer">⏱ 10</h2>
+<h2 id="score">🔥 0</h2>
+<div class="combo" id="combo">Combo: 0</div>
+
+<button id="gameBtn" onclick="clickGame()">⚡ TAP ⚡</button>
+
+<h2>🏆 Leaderboard</h2>
+<div id="board"></div>
+
+<div>👥 Online: <span id="online">1</span></div>
+
+<audio id="clickSound" src="https://www.soundjay.com/button/button-3.mp3"></audio>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔥 替换这里 */
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let score = 0;
+let time = 10;
+let playing = false;
+let combo = 0;
+let lastClick = 0;
+
+/* 开始 */
+window.startGame = function() {
+    const name = document.getElementById("name").value;
+    if (!name) return alert("Enter name!");
+
+    score = 0;
+    time = 10;
+    combo = 0;
+    playing = true;
+
+    updateUI();
+
+    let timer = setInterval(() => {
+        time--;
+
+        if (time <= 3) {
+            document.getElementById("timer").style.color = "red";
+        }
+
+        updateUI();
+
+        if (time <= 0) {
+            clearInterval(timer);
+            playing = false;
+
+            if(score < 1000){ // 🚫 防作弊
+                saveScore(name, score);
+            }
+        }
+    }, 1000);
+}
+
+/* 点击 */
+window.clickGame = function() {
+    if (!playing) return;
+
+    let now = Date.now();
+
+    if (now - lastClick < 300) {
+        combo++;
+    } else {
+        combo = 0;
+    }
+
+    lastClick = now;
+
+    let add = 1 + Math.floor(combo / 5);
+    score += add;
+
+    document.getElementById("clickSound").play();
+
+    document.getElementById("score").style.transform = "scale(1.4)";
+    setTimeout(()=>{
+        document.getElementById("score").style.transform = "scale(1)";
+    },100);
+
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById("score").innerText = "🔥 " + score;
+    document.getElementById("timer").innerText = "⏱ " + time;
+    document.getElementById("combo").innerText = "Combo: " + combo;
+}
+
+/* Firebase 保存 */
+async function saveScore(name, score) {
+    await addDoc(collection(db, "scores"), {
+        name,
+        score
+    });
+}
+
+/* 实时排行榜 */
+onSnapshot(collection(db, "scores"), (snapshot) => {
+    let arr = [];
+    snapshot.forEach(doc => arr.push(doc.data()));
+
+    arr.sort((a,b)=>b.score-a.score);
+
+    let html = "";
+    arr.slice(0,5).forEach((p,i)=>{
+        html += `<div class="card ${i==0?"first":""}">
+        ${i==0?"👑":""} #${i+1} ${p.name} - ${p.score}
+        </div>`;
+    });
+
+    document.getElementById("board").innerHTML = html;
+
+    document.getElementById("online").innerText = arr.length;
+});
+
+</script>
+
+</body>
+</html>
